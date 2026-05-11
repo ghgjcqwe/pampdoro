@@ -1,0 +1,850 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>番茄钟</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --work: #E74C3C;
+  --short-break: #2ECC71;
+  --long-break: #3498DB;
+  --bg: #F0F2F5;
+  --card: #FFFFFF;
+  --text: #2C3E50;
+  --text-secondary: #7F8C8D;
+  --border: #E1E8ED;
+  --shadow: 0 2px 12px rgba(0,0,0,0.08);
+  --radius: 16px;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  padding: 40px 20px;
+}
+
+.app {
+  width: 100%;
+  max-width: 480px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+h1 {
+  text-align: center;
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: 0.5px;
+}
+
+/* Timer Section */
+.timer-section {
+  background: var(--card);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 40px 32px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+}
+
+.status-label {
+  font-size: 14px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  padding: 4px 16px;
+  border-radius: 20px;
+  background: #F8F9FA;
+  color: var(--text-secondary);
+  transition: all 0.3s;
+}
+.status-label.working { background: #FDE8E8; color: var(--work); }
+.status-label.shortBreak { background: #E8F8EF; color: var(--short-break); }
+.status-label.longBreak { background: #E8F0F8; color: var(--long-break); }
+
+.ring-container {
+  position: relative;
+  width: 260px;
+  height: 260px;
+}
+
+.ring-container svg {
+  transform: rotate(-90deg);
+  width: 100%;
+  height: 100%;
+}
+
+.ring-bg {
+  fill: none;
+  stroke: #ECF0F1;
+  stroke-width: 8;
+}
+
+.ring-progress {
+  fill: none;
+  stroke: var(--work);
+  stroke-width: 8;
+  stroke-linecap: round;
+  transition: stroke 0.3s;
+}
+.ring-progress.working { stroke: var(--work); }
+.ring-progress.shortBreak { stroke: var(--short-break); }
+.ring-progress.longBreak { stroke: var(--long-break); }
+
+.time-display {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 56px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 2px;
+  color: var(--text);
+}
+
+/* Controls */
+.controls {
+  display: flex;
+  gap: 12px;
+}
+
+.btn {
+  border: none;
+  border-radius: 12px;
+  padding: 12px 24px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.btn:active { transform: scale(0.96); }
+
+.btn-primary {
+  background: var(--work);
+  color: white;
+  min-width: 120px;
+  justify-content: center;
+}
+.btn-primary:hover { background: #C0392B; }
+
+.btn-secondary {
+  background: #F0F2F5;
+  color: var(--text);
+}
+.btn-secondary:hover { background: #E1E8ED; }
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Card */
+.card {
+  background: var(--card);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 24px;
+}
+
+.card-header {
+  font-size: 16px;
+  font-weight: 700;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* Task Section */
+.task-input-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.task-input-row input {
+  flex: 1;
+  border: 2px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+.task-input-row input:focus { border-color: var(--work); }
+
+.task-list { list-style: none; display: flex; flex-direction: column; gap: 8px; }
+
+.task-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: #F8F9FA;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: 2px solid transparent;
+}
+.task-item:hover { background: #F0F2F5; }
+.task-item.active { border-color: var(--work); background: #FDE8E8; }
+.task-item.completed { opacity: 0.5; }
+
+.task-name {
+  flex: 1;
+  font-size: 14px;
+  font-weight: 500;
+}
+.task-item.completed .task-name { text-decoration: line-through; }
+
+.task-pomos {
+  font-size: 12px;
+  color: var(--text-secondary);
+  background: #ECF0F1;
+  border-radius: 12px;
+  padding: 2px 10px;
+}
+
+.task-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.task-btn {
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 16px;
+  padding: 4px 6px;
+  border-radius: 6px;
+  transition: all 0.15s;
+  color: var(--text-secondary);
+  line-height: 1;
+}
+.task-btn:hover { background: rgba(0,0,0,0.08); }
+.task-btn.done:hover { color: var(--short-break); }
+.task-btn.del:hover { color: var(--work); }
+
+.empty-hint {
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: 13px;
+  padding: 16px 0;
+}
+
+/* Stats Section */
+.stats-row {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.stat-box {
+  flex: 1;
+  text-align: center;
+  padding: 16px 8px;
+  background: #F8F9FA;
+  border-radius: 12px;
+}
+.stat-num {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--work);
+}
+.stat-label {
+  font-size: 11px;
+  color: var(--text-secondary);
+  margin-top: 4px;
+}
+
+.chart {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  height: 100px;
+  padding: 0 4px;
+}
+
+.chart-bar-wrapper {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.chart-bar {
+  width: 100%;
+  background: var(--work);
+  border-radius: 4px 4px 0 0;
+  min-height: 3px;
+  transition: height 0.5s ease;
+}
+
+.chart-label {
+  font-size: 10px;
+  color: var(--text-secondary);
+}
+
+/* Settings */
+.settings-row {
+  display: flex;
+  gap: 12px;
+}
+
+.settings-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.settings-item label {
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+.settings-item input {
+  border: 2px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 14px;
+  text-align: center;
+  outline: none;
+  width: 100%;
+}
+.settings-item input:focus { border-color: var(--work); }
+
+/* Notification permission */
+.permission-hint {
+  font-size: 12px;
+  color: var(--text-secondary);
+  text-align: center;
+  margin-top: 8px;
+}
+.permission-hint a {
+  color: var(--work);
+  cursor: pointer;
+  text-decoration: underline;
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <h1>🍅 番茄钟</h1>
+
+  <!-- Timer -->
+  <div class="timer-section">
+    <div class="status-label" id="statusLabel">准备开始</div>
+    <div class="ring-container">
+      <svg viewBox="0 0 200 200">
+        <circle class="ring-bg" cx="100" cy="100" r="90"/>
+        <circle class="ring-progress" id="ringProgress" cx="100" cy="100" r="90"
+                stroke-dasharray="565.49" stroke-dashoffset="0"/>
+      </svg>
+      <div class="time-display" id="timeDisplay">25:00</div>
+    </div>
+    <div class="controls">
+      <button class="btn btn-primary" id="btnStart">▶ 开始</button>
+      <button class="btn btn-secondary" id="btnSkip" disabled>⏭ 跳过</button>
+      <button class="btn btn-secondary" id="btnReset">↺ 重置</button>
+    </div>
+  </div>
+
+  <!-- Tasks -->
+  <div class="card">
+    <div class="card-header">📋 任务列表</div>
+    <div class="task-input-row">
+      <input type="text" id="taskInput" placeholder="添加新任务..." maxlength="60">
+      <button class="btn btn-primary" id="btnAddTask" style="min-width:auto;padding:10px 16px;">添加</button>
+    </div>
+    <ul class="task-list" id="taskList"></ul>
+    <div class="empty-hint" id="emptyHint">还没有任务，添加一个开始专注吧</div>
+  </div>
+
+  <!-- Stats -->
+  <div class="card">
+    <div class="card-header">📊 统计</div>
+    <div class="stats-row">
+      <div class="stat-box">
+        <div class="stat-num" id="todayCount">0</div>
+        <div class="stat-label">今日番茄</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-num" id="weekCount">0</div>
+        <div class="stat-label">本周番茄</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-num" id="totalCount">0</div>
+        <div class="stat-label">总计</div>
+      </div>
+    </div>
+    <div class="chart" id="chart"></div>
+  </div>
+
+  <!-- Settings -->
+  <div class="card">
+    <div class="card-header">⚙️ 设置</div>
+    <div class="settings-row">
+      <div class="settings-item">
+        <label>工作时间（分）</label>
+        <input type="number" id="setWork" min="1" max="120" value="25">
+      </div>
+      <div class="settings-item">
+        <label>短休息（分）</label>
+        <input type="number" id="setShortBreak" min="1" max="60" value="5">
+      </div>
+      <div class="settings-item">
+        <label>长休息（分）</label>
+        <input type="number" id="setLongBreak" min="1" max="60" value="15">
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── State ───────────────────────────────────────────────
+const STATE_KEY = 'pomodoro_state';
+const circumference = 2 * Math.PI * 90; // ~565.49
+
+let settings = { work: 25, shortBreak: 5, longBreak: 15 };
+let tasks = [];
+let currentTaskId = null;
+let stats = {}; // { 'YYYY-MM-DD': count }
+
+// Timer state
+let timer = {
+  phase: 'idle', // idle | working | shortBreak | longBreak
+  endTime: null,  // Date.now() when this phase ends
+  pausedRemaining: null, // ms remaining when paused
+  pomosInRound: 0, // 0-3, counts completed work sessions in current round
+};
+
+// ─── Persistence ─────────────────────────────────────────
+function saveState() {
+  localStorage.setItem(STATE_KEY, JSON.stringify({
+    settings, tasks, currentTaskId, stats,
+    timer: { ...timer, endTime: timer.endTime ? timer.endTime.toISOString() : null },
+  }));
+}
+
+function loadState() {
+  const raw = localStorage.getItem(STATE_KEY);
+  if (!raw) return;
+  try {
+    const data = JSON.parse(raw);
+    settings = data.settings || settings;
+    tasks = data.tasks || [];
+    currentTaskId = data.currentTaskId || null;
+    stats = data.stats || {};
+    if (data.timer) {
+      timer.phase = data.timer.phase || 'idle';
+      timer.endTime = data.timer.endTime ? new Date(data.timer.endTime) : null;
+      timer.pausedRemaining = data.timer.pausedRemaining || null;
+      timer.pomosInRound = data.timer.pomosInRound || 0;
+      // If endTime is in the past, the phase already finished while app was closed
+      if (timer.endTime && timer.endTime.getTime() <= Date.now() && timer.phase !== 'idle') {
+        finishPhase();
+      }
+    }
+  } catch (e) { /* ignore corrupted state */ }
+}
+
+// ─── Timer Logic ─────────────────────────────────────────
+// Uses Date.now() absolute end-time instead of counting ticks.
+// This keeps the timer accurate even when the browser throttles
+// setInterval in background tabs (Chrome clamps to 1 Hz).
+function getPhaseDuration() {
+  if (timer.phase === 'working') return settings.work * 60 * 1000;
+  if (timer.phase === 'shortBreak') return settings.shortBreak * 60 * 1000;
+  if (timer.phase === 'longBreak') return settings.longBreak * 60 * 1000;
+  return settings.work * 60 * 1000;
+}
+
+function getRemainingMs() {
+  if (timer.phase === 'idle') return settings.work * 60 * 1000;
+  if (timer.pausedRemaining !== null) return timer.pausedRemaining;
+  if (!timer.endTime) return getPhaseDuration();
+  return Math.max(0, timer.endTime.getTime() - Date.now());
+}
+
+function formatTime(ms) {
+  // Ceil so "25:00" stays visible until the last full second elapses
+  const totalSec = Math.ceil(ms / 1000);
+  const m = Math.floor(totalSec / 60);
+  const s = totalSec % 60;
+  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+}
+
+function startPhase(phase) {
+  timer.phase = phase;
+  timer.endTime = new Date(Date.now() + getPhaseDuration());
+  timer.pausedRemaining = null;
+  updateUI();
+  saveState();
+}
+
+function pause() {
+  timer.pausedRemaining = getRemainingMs();
+  timer.endTime = null;
+  saveState();
+}
+
+function resume() {
+  timer.endTime = new Date(Date.now() + timer.pausedRemaining);
+  timer.pausedRemaining = null;
+  saveState();
+}
+
+function resetTimer() {
+  timer.phase = 'idle';
+  timer.endTime = null;
+  timer.pausedRemaining = null;
+  timer.pomosInRound = 0;
+  updateUI();
+  saveState();
+}
+
+function skipPhase() {
+  finishPhase();
+}
+
+function finishPhase() {
+  const finishedPhase = timer.phase;
+
+  if (finishedPhase === 'working') {
+    // Record completed pomodoro
+    timer.pomosInRound++;
+    const today = new Date().toISOString().slice(0, 10);
+    stats[today] = (stats[today] || 0) + 1;
+
+    // Attribute to current task
+    if (currentTaskId) {
+      const task = tasks.find(t => t.id === currentTaskId);
+      if (task) task.pomodoros++;
+    }
+
+    notify('🍅 番茄钟完成！', '休息一下吧~');
+    // Next: break
+    if (timer.pomosInRound % 4 === 0) {
+      startPhase('longBreak');
+    } else {
+      startPhase('shortBreak');
+    }
+  } else if (finishedPhase === 'shortBreak' || finishedPhase === 'longBreak') {
+    notify('⏰ 休息结束！', '开始新的番茄钟吧');
+    startPhase('working');
+  } else {
+    // idle → start working
+    startPhase('working');
+  }
+}
+
+// ─── Notifications ───────────────────────────────────────
+function notify(title, body) {
+  if (Notification.permission === 'granted') {
+    new Notification(title, { body, icon: '🍅' });
+  }
+  playBeep();
+}
+
+function playBeep() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.frequency.value = 800;
+    osc.type = 'sine';
+    gain.gain.value = 0.3;
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + 0.3);
+  } catch (e) { /* audio not available */ }
+}
+
+function requestNotificationPermission() {
+  if (Notification.permission === 'default') {
+    Notification.requestPermission();
+  }
+}
+
+// ─── Tasks ───────────────────────────────────────────────
+function addTask(name) {
+  const task = {
+    id: Date.now().toString(),
+    name: name.trim(),
+    pomodoros: 0,
+    completed: false,
+  };
+  tasks.push(task);
+  if (!currentTaskId) currentTaskId = task.id;
+  renderTasks();
+  saveState();
+}
+
+function deleteTask(id) {
+  tasks = tasks.filter(t => t.id !== id);
+  if (currentTaskId === id) {
+    currentTaskId = tasks.length > 0 ? tasks[0].id : null;
+  }
+  renderTasks();
+  saveState();
+}
+
+function toggleTaskComplete(id) {
+  const task = tasks.find(t => t.id === id);
+  if (task) {
+    task.completed = !task.completed;
+    renderTasks();
+    saveState();
+  }
+}
+
+function setCurrentTask(id) {
+  currentTaskId = id;
+  renderTasks();
+  saveState();
+}
+
+function renderTasks() {
+  const list = document.getElementById('taskList');
+  const hint = document.getElementById('emptyHint');
+  list.innerHTML = '';
+  if (tasks.length === 0) {
+    hint.style.display = 'block';
+    return;
+  }
+  hint.style.display = 'none';
+  tasks.forEach(task => {
+    const li = document.createElement('li');
+    li.className = 'task-item';
+    if (task.id === currentTaskId) li.classList.add('active');
+    if (task.completed) li.classList.add('completed');
+
+    li.innerHTML = `
+      <span class="task-name">${esc(task.name)}</span>
+      <span class="task-pomos">🍅 ${task.pomodoros}</span>
+      <div class="task-actions">
+        <button class="task-btn done" title="完成">✔</button>
+        <button class="task-btn del" title="删除">✕</button>
+      </div>
+    `;
+
+    li.addEventListener('click', (e) => {
+      if (e.target.closest('.task-btn')) return;
+      setCurrentTask(task.id);
+    });
+    li.querySelector('.task-btn.done').addEventListener('click', (e) => {
+      e.stopPropagation();
+      toggleTaskComplete(task.id);
+    });
+    li.querySelector('.task-btn.del').addEventListener('click', (e) => {
+      e.stopPropagation();
+      deleteTask(task.id);
+    });
+
+    list.appendChild(li);
+  });
+}
+
+function esc(s) {
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+// ─── Stats ───────────────────────────────────────────────
+function renderStats() {
+  const today = new Date().toISOString().slice(0, 10);
+  const todayCount = stats[today] || 0;
+  let weekCount = 0;
+  let totalCount = 0;
+
+  // Calculate week (Mon-Sun). getDay() returns 0=Sun, so map 0→6
+  const now = new Date();
+  const dayOfWeek = now.getDay();
+  const monday = new Date(now);
+  monday.setDate(now.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
+
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(monday);
+    d.setDate(monday.getDate() + i);
+    const key = d.toISOString().slice(0, 10);
+    const count = stats[key] || 0;
+    weekCount += count;
+  }
+
+  for (const count of Object.values(stats)) {
+    totalCount += count;
+  }
+
+  document.getElementById('todayCount').textContent = todayCount;
+  document.getElementById('weekCount').textContent = weekCount;
+  document.getElementById('totalCount').textContent = totalCount;
+
+  // 7-day bar chart
+  const chart = document.getElementById('chart');
+  const maxCount = Math.max(1, ...Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(monday);
+    d.setDate(monday.getDate() + i);
+    return stats[d.toISOString().slice(0, 10)] || 0;
+  }));
+
+  const dayLabels = ['一', '二', '三', '四', '五', '六', '日'];
+  chart.innerHTML = '';
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(monday);
+    d.setDate(monday.getDate() + i);
+    const key = d.toISOString().slice(0, 10);
+    const count = stats[key] || 0;
+    const height = (count / maxCount) * 100;
+
+    const wrapper = document.createElement('div');
+    wrapper.className = 'chart-bar-wrapper';
+    const isToday = key === today;
+    wrapper.innerHTML = `
+      <div class="chart-bar" style="height:${Math.max(height, 3)}px;background:${isToday ? 'var(--work)' : '#E8D5D5'}"></div>
+      <div class="chart-label" style="${isToday ? 'color:var(--work);font-weight:700' : ''}">${dayLabels[i]}</div>
+    `;
+    chart.appendChild(wrapper);
+  }
+}
+
+// ─── UI Updates ──────────────────────────────────────────
+function updateTimerDisplay() {
+  const remaining = getRemainingMs();
+  const total = getPhaseDuration();
+  const progress = timer.phase === 'idle' ? 1 : remaining / total;
+
+  document.getElementById('timeDisplay').textContent = formatTime(remaining);
+
+  const ring = document.getElementById('ringProgress');
+  ring.setAttribute('stroke-dashoffset', circumference * (1 - progress));
+  ring.className = 'ring-progress ' + timer.phase;
+
+  // Title
+  const timeStr = formatTime(remaining);
+  const phaseNames = { working: '专注', shortBreak: '短休息', longBreak: '长休息', idle: '就绪' };
+  document.title = `${timeStr} - ${phaseNames[timer.phase]} | 番茄钟`;
+
+  // Status label
+  const label = document.getElementById('statusLabel');
+  const labelTexts = { idle: '准备开始', working: '🔴 专注中', shortBreak: '🟢 短休息', longBreak: '🔵 长休息' };
+  label.textContent = labelTexts[timer.phase];
+  label.className = 'status-label ' + timer.phase;
+
+  // Buttons
+  const btnStart = document.getElementById('btnStart');
+  const isPaused = timer.pausedRemaining !== null;
+  const isRunning = timer.phase !== 'idle' && !isPaused;
+
+  if (timer.phase === 'idle') {
+    btnStart.textContent = '▶ 开始';
+    btnStart.disabled = false;
+  } else if (isPaused) {
+    btnStart.textContent = '▶ 继续';
+    btnStart.disabled = false;
+  } else {
+    btnStart.textContent = '⏸ 暂停';
+    btnStart.disabled = false;
+  }
+
+  document.getElementById('btnSkip').disabled = timer.phase === 'idle';
+}
+
+function updateUI() {
+  updateTimerDisplay();
+  renderTasks();
+  renderStats();
+
+  // Settings inputs
+  document.getElementById('setWork').value = settings.work;
+  document.getElementById('setShortBreak').value = settings.shortBreak;
+  document.getElementById('setLongBreak').value = settings.longBreak;
+}
+
+// ─── Event Handlers ──────────────────────────────────────
+document.getElementById('btnStart').addEventListener('click', () => {
+  requestNotificationPermission();
+  if (timer.phase === 'idle') {
+    startPhase('working');
+  } else if (timer.pausedRemaining !== null) {
+    resume();
+  } else {
+    pause();
+  }
+  updateUI();
+});
+
+document.getElementById('btnSkip').addEventListener('click', () => {
+  skipPhase();
+  updateUI();
+});
+
+document.getElementById('btnReset').addEventListener('click', () => {
+  resetTimer();
+});
+
+document.getElementById('btnAddTask').addEventListener('click', () => {
+  const input = document.getElementById('taskInput');
+  const name = input.value.trim();
+  if (!name) return;
+  addTask(name);
+  input.value = '';
+  input.focus();
+});
+
+document.getElementById('taskInput').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') {
+    document.getElementById('btnAddTask').click();
+  }
+});
+
+// Settings changes
+['setWork', 'setShortBreak', 'setLongBreak'].forEach(id => {
+  document.getElementById(id).addEventListener('change', () => {
+    const val = parseInt(document.getElementById(id).value, 10);
+    if (isNaN(val) || val < 1) return;
+    if (id === 'setWork') settings.work = val;
+    if (id === 'setShortBreak') settings.shortBreak = val;
+    if (id === 'setLongBreak') settings.longBreak = val;
+    // If idle, reset display to new work duration
+    if (timer.phase === 'idle') {
+      updateTimerDisplay();
+    }
+    saveState();
+  });
+});
+
+// ─── Tick Loop ───────────────────────────────────────────
+function tick() {
+  updateTimerDisplay();
+  // Check if phase finished
+  if (timer.endTime && timer.endTime.getTime() <= Date.now()) {
+    finishPhase();
+  }
+}
+
+// ─── Init ────────────────────────────────────────────────
+requestNotificationPermission();
+loadState();
+updateUI();
+setInterval(tick, 500);
+</script>
+</body>
+</html>
